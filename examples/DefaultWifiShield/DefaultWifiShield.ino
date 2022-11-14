@@ -43,6 +43,23 @@ uint8_t buffer[1440];
 uint32_t bufferPosition = 0;
 
 ///////////////////////////////////////////
+// Current source control
+///////////////////////////////////////////
+const int pinoA = 9; //pino A
+const int pinoB = 10; //pino B
+const int pinoC = 4; //pino C
+
+//Variables that store the states of the pins
+boolean statusA = true;
+boolean statusB = true;
+boolean statusC = true;
+
+//Variable that determines current intensity
+byte selecao = 0;
+
+
+
+///////////////////////////////////////////
 // Utility functions
 ///////////////////////////////////////////
 
@@ -63,13 +80,13 @@ void printWifiStatus() {
 
 
 /**
-* Used when
+  Used when
 */
 void configModeCallback (WiFiManager *myWiFiManager) {
-  #ifdef DEBUG
+#ifdef DEBUG
   Serial.println(WiFi.softAPIP());
   Serial.println(myWiFiManager->getConfigPortalSSID());
-  #endif
+#endif
 }
 
 
@@ -78,7 +95,7 @@ void configModeCallback (WiFiManager *myWiFiManager) {
 ///////////////////////////////////////////////////
 
 /**
-* Returns true if there is no args on the POST request.
+  Returns true if there is no args on the POST request.
 */
 boolean noBodyInParam() {
   return server.args() == 0;
@@ -123,7 +140,7 @@ void returnOK(void) {
 }
 
 /**
-* Used to send a response to the client that the board is not attached.
+  Used to send a response to the client that the board is not attached.
 */
 void returnNoSPIMaster() {
   if (wifi.lastTimeWasPolled < 1) {
@@ -134,14 +151,14 @@ void returnNoSPIMaster() {
 }
 
 /**
-* Used to send a response to the client that there is no body in the post request.
+  Used to send a response to the client that there is no body in the post request.
 */
 void returnNoBodyInPost() {
   serverReturn(CLIENT_RESPONSE_NO_BODY_IN_POST, "Error: No body in POST request");
 }
 
 /**
-* Return if there is a missing param in the required command
+  Return if there is a missing param in the required command
 */
 void returnMissingRequiredParam(const char *err) {
   serverReturn(CLIENT_RESPONSE_MISSING_REQUIRED_CMD, String(err));
@@ -203,7 +220,7 @@ JsonObject& getArgFromArgs() {
 }
 
 /**
-* Used to set the latency of the system.
+  Used to set the latency of the system.
 */
 void setLatency() {
   if (noBodyInParam()) return returnNoBodyInPost();
@@ -219,21 +236,21 @@ void setLatency() {
 }
 
 /**
-* Used to set the latency of the system.
+  Used to set the latency of the system.
 */
 void passthroughCommand() {
   if (noBodyInParam()) return returnNoBodyInPost();
   if (!wifi.spiHasMaster()) return returnNoSPIMaster();
   JsonObject& root = getArgFromArgs();
 
-  #ifdef DEBUG
+#ifdef DEBUG
   root.printTo(Serial);
-  #endif
+#endif
   if (root.containsKey(JSON_COMMAND)) {
     String cmds = root[JSON_COMMAND];
     uint8_t retVal = wifi.passthroughCommands(cmds);
     if (retVal < PASSTHROUGH_PASS) {
-      switch(retVal) {
+      switch (retVal) {
         case PASSTHROUGH_FAIL_TOO_MANY_CHARS:
           return returnFail(501, "Error: Sent more than 31 chars");
         case PASSTHROUGH_FAIL_NO_CHARS:
@@ -253,7 +270,7 @@ void passthroughCommand() {
 void tcpSetup() {
 
   // Parse args
-  if(noBodyInParam()) return returnNoBodyInPost(); // no body
+  if (noBodyInParam()) return returnNoBodyInPost(); // no body
   JsonObject& root = getArgFromArgs(8);
   if (!root.containsKey(JSON_TCP_IP)) return returnMissingRequiredParam(JSON_TCP_IP);
   String tempAddr = root[JSON_TCP_IP];
@@ -270,7 +287,7 @@ void tcpSetup() {
     } else if (outputModeStr.equals(wifi.getOutputModeString(wifi.OUTPUT_MODE_JSON))) {
       wifi.setOutputMode(wifi.OUTPUT_MODE_JSON);
     } else {
-      return returnFail(506, "Error: '" + String(JSON_TCP_OUTPUT) + "' must be either " + wifi.getOutputModeString(wifi.OUTPUT_MODE_RAW)+" or " + wifi.getOutputModeString(wifi.OUTPUT_MODE_JSON));
+      return returnFail(506, "Error: '" + String(JSON_TCP_OUTPUT) + "' must be either " + wifi.getOutputModeString(wifi.OUTPUT_MODE_RAW) + " or " + wifi.getOutputModeString(wifi.OUTPUT_MODE_JSON));
     }
 #ifdef DEBUG
     Serial.print("Set output mode to "); Serial.println(wifi.getCurOutputModeString());
@@ -329,9 +346,9 @@ void tcpSetup() {
   // JsonObject& rootOut = jsonBuffer.createObject();
   sendHeadersForCORS();
   if (clientTCP.connect(wifi.tcpAddress, wifi.tcpPort)) {
-  #ifdef DEBUG
+#ifdef DEBUG
     Serial.println("Connected to server");
-  #endif
+#endif
     clientTCP.setNoDelay(1);
     jsonStr = wifi.getInfoTCP(true);
     // jsonStr = "";
@@ -339,9 +356,9 @@ void tcpSetup() {
     server.setContentLength(jsonStr.length());
     return server.send(200, RETURN_TEXT_JSON, jsonStr.c_str());
   } else {
-  #ifdef DEBUG
+#ifdef DEBUG
     Serial.println("Failed to connect to server");
-  #endif
+#endif
     jsonStr = wifi.getInfoTCP(false);
     // jsonStr = "";
     // rootOut.printTo(jsonStr);
@@ -352,7 +369,7 @@ void tcpSetup() {
 
 void udpSetup() {
   // Parse args
-  if(noBodyInParam()) return returnNoBodyInPost(); // no body
+  if (noBodyInParam()) return returnNoBodyInPost(); // no body
   JsonObject& root = getArgFromArgs(7);
   if (!root.containsKey(JSON_TCP_IP)) return returnMissingRequiredParam(JSON_TCP_IP);
   String tempAddr = root[JSON_TCP_IP];
@@ -370,11 +387,11 @@ void udpSetup() {
     } else if (outputModeStr.equals(wifi.getOutputModeString(wifi.OUTPUT_MODE_JSON))) {
       wifi.setOutputMode(wifi.OUTPUT_MODE_JSON);
     } else {
-      return returnFail(506, "Error: '" + String(JSON_TCP_OUTPUT) + "' must be either " + wifi.getOutputModeString(wifi.OUTPUT_MODE_RAW)+" or " + wifi.getOutputModeString(wifi.OUTPUT_MODE_JSON));
+      return returnFail(506, "Error: '" + String(JSON_TCP_OUTPUT) + "' must be either " + wifi.getOutputModeString(wifi.OUTPUT_MODE_RAW) + " or " + wifi.getOutputModeString(wifi.OUTPUT_MODE_JSON));
     }
-  #ifdef DEBUG
+#ifdef DEBUG
     Serial.print("Set output mode to "); Serial.println(wifi.getCurOutputModeString());
-  #endif
+#endif
   }
 
 
@@ -388,17 +405,17 @@ void udpSetup() {
   if (root.containsKey(JSON_LATENCY)) {
     int latency = root[JSON_LATENCY];
     wifi.setLatency(latency);
-  #ifdef DEBUG
+#ifdef DEBUG
     Serial.print("Set latency to "); Serial.print(wifi.getLatency()); Serial.println(" uS");
-  #endif
+#endif
   }
 
   boolean tcpDelimiter = wifi.tcpDelimiter;
   if (root.containsKey(JSON_TCP_DELIMITER)) {
     tcpDelimiter = root[JSON_TCP_DELIMITER];
-  #ifdef DEBUG
+#ifdef DEBUG
     Serial.print("Will use delimiter:"); Serial.println(wifi.tcpDelimiter ? "true" : "false");
-  #endif
+#endif
   }
   wifi.setInfoUDP(tempAddr, port, tcpDelimiter);
 
@@ -449,16 +466,48 @@ void initializeVariables() {
 void setup() {
   initializeVariables();
 
+
+  //////////Current source control START//////////
+  pinMode(pinoA, OUTPUT); //pin 09 as output
+  pinMode(pinoB, OUTPUT); //pin 10 as output
+  pinMode(pinoC, OUTPUT); //pin 04 as output
+
+    switch (selecao)
+  {
+    case 0: // 0.1mA
+      statusA = 1;
+      statusB = 0;
+      statusC = 0;
+      break;
+    case 1:// 0.2mA
+      statusA = 0;
+      statusB = 1;
+      statusC = 0;
+      break;
+    case 2: // 0.3mA
+      statusA = 1;
+      statusB = 1;
+      statusC = 0;
+      break;
+    case 3: // 0.4mA
+      statusA = 1;
+      statusB = 1;
+      statusC = 1;
+      break;
+  }
+
+  //////////Current source control STOP/////////
+
   WiFi.mode(WIFI_AP_STA);
   // WiFi.mode(WIFI_STA);
   // WiFi.mode(WIFI_AP);
 
-  #ifdef DEBUG
+#ifdef DEBUG
   Serial.begin(230400);
   Serial.setDebugOutput(true);
   Serial.println("Serial started");
   Serial.println("Version: " + String(SOFTWARE_VERSION));
-  #endif
+#endif
 
   wifi.begin();
 
@@ -511,7 +560,7 @@ void setup() {
   Serial.printf("Starting HTTP...\n");
 #endif
 
-  server.on(HTTP_ROUTE, HTTP_GET, [](){
+  server.on(HTTP_ROUTE, HTTP_GET, []() {
 #ifdef DEBUG
     debugPrintGet();
 #endif
@@ -560,7 +609,7 @@ void setup() {
   });
   server.on(HTTP_ROUTE, HTTP_OPTIONS, sendHeadersForOptions);
 
-  server.on("/description.xml", HTTP_GET, [](){
+  server.on("/description.xml", HTTP_GET, []() {
 #ifdef DEBUG
     Serial.println("SSDP HIT");
 #endif
@@ -568,7 +617,7 @@ void setup() {
     SSDP.schema(server.client());
     digitalWrite(LED_NOTIFY, HIGH);
   });
-  server.on(HTTP_ROUTE_YT, HTTP_GET, [](){
+  server.on(HTTP_ROUTE_YT, HTTP_GET, []() {
 #ifdef DEBUG
     debugPrintGet();
 #endif
@@ -637,7 +686,7 @@ void setup() {
   });
   server.on(HTTP_ROUTE_STREAM_STOP, HTTP_OPTIONS, sendHeadersForOptions);
 
-  server.on(HTTP_ROUTE_VERSION, HTTP_GET, [](){
+  server.on(HTTP_ROUTE_VERSION, HTTP_GET, []() {
 #ifdef DEBUG
     debugPrintGet();
 #endif
@@ -648,7 +697,7 @@ void setup() {
   server.on(HTTP_ROUTE_COMMAND, HTTP_POST, passthroughCommand);
   server.on(HTTP_ROUTE_COMMAND, HTTP_OPTIONS, sendHeadersForOptions);
 
-  server.on(HTTP_ROUTE_LATENCY, HTTP_GET, [](){
+  server.on(HTTP_ROUTE_LATENCY, HTTP_GET, []() {
     returnOK(String(wifi.getLatency()).c_str());
   });
   server.on(HTTP_ROUTE_LATENCY, HTTP_POST, setLatency);
@@ -664,7 +713,7 @@ void setup() {
 #endif
   }
 
-  server.onNotFound([](){
+  server.onNotFound([]() {
 #ifdef DEBUG
     Serial.println("HTTP NOT FOUND " + server.uri());
 #endif
@@ -672,7 +721,7 @@ void setup() {
   });
 
   //get heap status, analog input value and all GPIO statuses in one json call
-  server.on(HTTP_ROUTE_ALL, HTTP_GET, [](){
+  server.on(HTTP_ROUTE_ALL, HTTP_GET, []() {
 #ifdef DEBUG
     debugPrintGet();
 #endif
@@ -683,7 +732,7 @@ void setup() {
   });
   server.on(HTTP_ROUTE_ALL, HTTP_OPTIONS, sendHeadersForOptions);
 
-  server.on(HTTP_ROUTE_BOARD, HTTP_GET, [](){
+  server.on(HTTP_ROUTE_BOARD, HTTP_GET, []() {
 #ifdef DEBUG
     debugPrintGet();
 #endif
@@ -759,6 +808,15 @@ void setup() {
 /////////////////////////////////
 void loop() {
 
+
+  //Current control START //
+
+  digitalWrite(pinoA, statusA);
+  digitalWrite(pinoB, statusB);
+  digitalWrite(pinoC, statusC);
+
+  //Current control END //
+
   if (ledFlashes > 0) {
     if (millis() > (ledLastFlash + ledInterval)) {
       digitalWrite(LED_NOTIFY, ledState ? HIGH : LOW);
@@ -803,7 +861,7 @@ void loop() {
       ledFlashes = 2;
       ledInterval = 500;
       ledLastFlash = millis();
-  } else if (millis() > (wifiConnectTimeout + 10000)) {
+    } else if (millis() > (wifiConnectTimeout + 10000)) {
 #ifdef DEBUG
       Serial.printf("Failed to connect to network with %d bytes on head\n", ESP.getFreeHeap());
 #endif
@@ -879,7 +937,7 @@ void loop() {
   if (packetsToSend > MAX_PACKETS_PER_SEND_TCP) {
     packetsToSend = MAX_PACKETS_PER_SEND_TCP;
   }
-  if((clientTCP.connected() || wifi.curOutputProtocol == wifi.OUTPUT_PROTOCOL_SERIAL || wifi.curOutputProtocol == wifi.OUTPUT_PROTOCOL_UDP) && (micros() > (lastSendToClient + wifi.getLatency()) || packetsToSend == MAX_PACKETS_PER_SEND_TCP) && (packetsToSend > 0)) {
+  if ((clientTCP.connected() || wifi.curOutputProtocol == wifi.OUTPUT_PROTOCOL_SERIAL || wifi.curOutputProtocol == wifi.OUTPUT_PROTOCOL_UDP) && (micros() > (lastSendToClient + wifi.getLatency()) || packetsToSend == MAX_PACKETS_PER_SEND_TCP) && (packetsToSend > 0)) {
     // Serial.printf("LS2C: %lums H: %u T: %u P2S: %d", (micros() - lastSendToClient)/1000, wifi.rawBufferHead, wifi.rawBufferTail, packetsToSend);
     digitalWrite(LED_NOTIFY, LOW);
 
